@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+message FunctionInfo {
+    string name = 1;
+    string signature = 2;
+    uint32 args_count = 3;
+    string return_type = 4; // TODO: Use Type
+    bool is_method = 5;
+    bool is_static = 6;
+    string implementing_file_name = 7;  // TODO: Use File reference table
+    uint32 implementing_file_line = 8;
+}
+
+// TODO: Function cross references:
+// Implementation
+// Declaration
+// Reference (call/stores)
