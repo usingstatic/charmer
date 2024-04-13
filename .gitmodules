@@ -1,0 +1,5 @@
+[submodule "clangindex/extern/protobuf"]
+	path = clangindex/extern/protobuf
+	url = https://github.com/protocolbuffers/protobuf.git
+	shallow = true
+	branch = main

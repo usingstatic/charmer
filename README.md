@@ -35,14 +35,14 @@ make
 
 *Step 3: Run the tool on a source file*
 ```
-./SQLiteExample ../../generated/functioninfo.sqlite
+./SQLiteExample ../../generated/functioninfo.sqlite <some C/C++ file>
 ```
 
-This should create the database (in memory), initialize the tables, scan the source file and create INSERT commands for each function. Didn't execute the insert yet
+This should create the database (called example.db in the current run folder), initialize the tables, scan the source file and create INSERT commands for each function. Didn't execute the insert yet
 
 *Step 4: Query the database:*
 
-After the database has been written to file (TODO), query it like:
+After the database has been written to file , query it like:
 ```
 sqlite3 example.db
 SQLite version 3.43.2 2023-10-10 13:08:14

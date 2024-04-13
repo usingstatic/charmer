@@ -75,28 +75,46 @@ CXChildVisitResult visitFunctionNode(CXCursor cursor, CXCursor parent, CXClientD
     return CXChildVisit_Continue;
 }
 
-struct SQLiteDeleter {
-    void operator()(sqlite3* db) const {
-        std::cerr << "Closing handle to DB" << std::endl;
-        sqlite3_close(db);
-    }
+class SQLite {
+    private:
+        sqlite3 *db;    // Use unique_ptr etc.
+    public:
+        SQLite()
+        {
+            db = nullptr;
+        }
+
+        int init(const char *db_name)
+        {
+            if (sqlite3_open(db_name, &db) != SQLITE_OK) {
+                char* errMsg = nullptr;
+                std::cerr << "Cannot open database: " << sqlite3_errmsg(db) << std::endl;
+                sqlite3_free(errMsg);
+                return 1;
+            }
+        }
+
+        ~SQLite()
+        {
+            if (db != nullptr) {
+                std::cerr << "Closing handle to DB" << std::endl;
+                sqlite3_close(db);
+            }
+        }
+        // Delete copy constructor and copy assignment operator to prevent copying.
+        SQLite(const SQLite&) = delete;
+        SQLite& operator=(const SQLite&) = delete;
+
+        sqlite3* get() const { return db; }
 };
 
-int initDb(const char *schema)
+int initDb(SQLite& db, const char *schema)
 {
-    sqlite3 *db_handle = nullptr;
-    if (sqlite3_open(":memory:", &db_handle) != SQLITE_OK) {
-        std::cerr << "Cannot open database: " << sqlite3_errmsg(db_handle) << std::endl;
-        return 1;
-    }
-    std::unique_ptr<sqlite3, SQLiteDeleter> db(db_handle, SQLiteDeleter{});
-
-    char* errMsg = nullptr;
-
     // Read SQL from file
     std::ifstream sqlFile(schema);
     std::string sql((std::istreambuf_iterator<char>(sqlFile)), std::istreambuf_iterator<char>());
 
+    char* errMsg = nullptr;
     int rc = sqlite3_exec(db.get(), sql.c_str(), nullptr, nullptr, &errMsg);
     if (rc != SQLITE_OK) {
         std::cerr << "SQL error: " << errMsg << std::endl;
@@ -107,16 +125,17 @@ int initDb(const char *schema)
 }
 
 // TODO: Autogenerate, never use unquoted values. This is unsafe and vulnerable to any SQL shenanigans. Will use a structured insert properly. For PoC purposes only
-std::string insertCommand(FunctionInfo& fn)
+std::string insertCommand(const FunctionInfo& fn)
 {
     std::ostringstream oss;
     oss << "INSERT INTO `t_FunctionInfo` (`1`, `2`, `3`, `4`, `5`, `6`) VALUES ("
         <<  "\"" << fn.name() << "\""
         << ",\"" << fn.signature() << "\""
-        << ",\"" << std::dec << fn.args_count() << "\""
+        << "," << std::dec << fn.args_count() << ""
         << ",\"" << fn.return_type() << "\""
         << "," << (fn.is_method() ? "TRUE" : "FALSE") << ""
         << "," << (fn.is_static() ? "TRUE" : "FALSE") << ""
+        << ")"
         << ";";
 
     return oss.str();
@@ -127,12 +146,25 @@ int main(int argc, char** argv) {
         std::cerr << "Usage: " << argv[0] << " <SQL_script_file> <source_file>" << std::endl;
         return 1;
     }
-    if (initDb(argv[1]) != 0) {
+    SQLite db;
+    db.init("example.db");
+    if (initDb(db, argv[1]) != 0) {
         return 1;
     }
     std::cout << "SQL execution successful." << std::endl;
 
     auto functions = selectClangFunctions(argv[2]);
-    std::cout << insertCommand(functions[0]) << std::endl;
+    std::ostringstream oss;
+    for (const FunctionInfo& fn : functions) {
+        oss << insertCommand(fn) << std::endl;
+    }
+
+    char* errMsg = nullptr;
+    int rc = sqlite3_exec(db.get(), oss.str().c_str(), nullptr, nullptr, &errMsg);
+    if (rc != SQLITE_OK) {
+        std::cerr << "SQL error: " << errMsg << std::endl;
+        sqlite3_free(errMsg);
+        return 1;
+    }
     return 0;
 }

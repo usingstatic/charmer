@@ -9,6 +9,12 @@ if(POLICY CMP0075)
     cmake_policy(SET CMP0075 NEW)
 endif()
 
+# Dependencies:
+
+# Include the subdirectory containing Protocol Buffers' CMake project
+add_subdirectory(extern/protobuf)
+include_directories(extern/protobuf/src)
+
 # Define our target
 add_executable(SQLiteExample src/main.cpp)
 
@@ -48,17 +54,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 target_sources(SQLiteExample PRIVATE ${PROTO_SRCS} ${PROTO_HDRS})
 
 include_directories(${Protobuf_INCLUDE_DIRS})
-target_link_libraries(SQLiteExample PRIVATE ${Protobuf_LIBRARIES})
-
-# Protobuf requires Abseil
-find_package(absl REQUIRED)
-
-# Link against absl libraries needed by protobuf
-if(APPLE)
-    # Assuming installed using Homebrew
-    execute_process(COMMAND brew --prefix abseil OUTPUT_VARIABLE ABSEIL_PREFIX OUTPUT_STRIP_TRAILING_WHITESPACE)
-    list(APPEND CMAKE_PREFIX_PATH "${ABSEIL_PREFIX}")
-endif()
+target_link_libraries(SQLiteExample PRIVATE libprotobuf)
 
 find_library(ABSL_BASE absl_base PATHS ${ABSEIL_PREFIX}/lib REQUIRED)
 find_library(ABSL_STRINGS absl_strings PATHS ${ABSEIL_PREFIX}/lib REQUIRED)
