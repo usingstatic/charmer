@@ -35,7 +35,7 @@ make
 
 *Step 3: Run the tool on a source file*
 ```
-./SQLiteExample ../../generated/functioninfo.sqlite <some C/C++ file>
+./SQLiteExample ../../generated/functioninfo.sqlite example.db <some C/C++ file>
 ```
 
 This should create the database (called example.db in the current run folder), initialize the tables, scan the source file and create INSERT commands for each function. Didn't execute the insert yet

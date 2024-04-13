@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <filesystem>
 
 #include <sqlite3.h>
 #include <clang-c/Index.h>
@@ -92,6 +93,8 @@ class SQLite {
                 sqlite3_free(errMsg);
                 return 1;
             }
+            std::cout << "Opened handle to DB: " << db_name << std::endl;
+            return 0;
         }
 
         ~SQLite()
@@ -108,7 +111,7 @@ class SQLite {
         sqlite3* get() const { return db; }
 };
 
-int initDb(SQLite& db, const char *schema)
+int createTables(SQLite& db, const char *schema)
 {
     // Read SQL from file
     std::ifstream sqlFile(schema);
@@ -121,6 +124,7 @@ int initDb(SQLite& db, const char *schema)
         sqlite3_free(errMsg);
         return 1;
     }
+    std::cout << "SQL execution successful." << std::endl;
     return 0;
 }
 
@@ -142,18 +146,24 @@ std::string insertCommand(const FunctionInfo& fn)
 }
 
 int main(int argc, char** argv) {
-    if (argc <= 2) {
-        std::cerr << "Usage: " << argv[0] << " <SQL_script_file> <source_file>" << std::endl;
+    if (argc <= 3) {
+        std::cerr << "Usage: " << argv[0] << " <SQL_script_file> <output db filename> <source_file>" << std::endl;
         return 1;
     }
+    const char *db_file_name = argv[2];
     SQLite db;
-    db.init("example.db");
-    if (initDb(db, argv[1]) != 0) {
+    const bool dbFileExists = std::filesystem::exists(db_file_name);
+    if (dbFileExists) {
+        std::cout << "File " << db_file_name << " already exists. Will not create tables." << std::endl;
+    }
+
+    // Init the database, will create the file if does't exist yet
+    db.init(db_file_name);
+
+    if (!dbFileExists && createTables(db, argv[1]) != 0) {
         return 1;
     }
-    std::cout << "SQL execution successful." << std::endl;
-
-    auto functions = selectClangFunctions(argv[2]);
+    auto functions = selectClangFunctions(argv[3]);
     std::ostringstream oss;
     for (const FunctionInfo& fn : functions) {
         oss << insertCommand(fn) << std::endl;
